@@ -8,6 +8,7 @@
 #include "ViveMediaDecoder.h"
 
 #include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/core/binder_common.hpp>
 
 using namespace godot;

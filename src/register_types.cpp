@@ -17,12 +17,14 @@ void register_ffmpeg_media_decoder_types() {
 void unregister_ffmpeg_media_decoder_types() {}
 
 extern "C" {
-	GDNativeBool GDN_EXPORT ffmpeg_media_decoder_init(const GDNativeInterface *p_interface, const GDNativeExtensionClassLibraryPtr p_library, GDNativeInitialization *r_initialization) {
-		godot::GDExtensionBinding::InitObject init_obj(p_interface, p_library, r_initialization);
 
-		init_obj.register_scene_initializer(register_ffmpeg_media_decoder_types);
-		init_obj.register_scene_terminator(unregister_ffmpeg_media_decoder_types);
+GDNativeBool GDN_EXPORT ffmpeg_media_decoder_init(const GDNativeInterface *p_interface, const GDNativeExtensionClassLibraryPtr p_library, GDNativeInitialization *r_initialization) {
+	godot::GDExtensionBinding::InitObject init_obj(p_interface, p_library, r_initialization);
 
-		return init_obj.init();
-	}
+	init_obj.register_scene_initializer(register_ffmpeg_media_decoder_types);
+	init_obj.register_scene_terminator(unregister_ffmpeg_media_decoder_types);
+
+	return init_obj.init();
+}
+
 }
