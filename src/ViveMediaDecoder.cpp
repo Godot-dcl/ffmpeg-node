@@ -10,6 +10,8 @@
 #include <list>
 #include <cstring>
 
+#define strcpy_s(src, size, dest) (strncpy((dest), (src), (size)))
+
 typedef struct _VideoContext {
 	int id = -1;
 	std::string path = "";
@@ -104,7 +106,7 @@ int nativeCreateDecoder(const char* filePath, int& id) {
 int nativeGetDecoderState(int id) {
     std::shared_ptr<VideoContext> videoCtx;
 	if (!getVideoContext(id, videoCtx) || videoCtx->avhandler == nullptr) { return -1; }
-		
+
 	return videoCtx->avhandler->getDecoderState();
 }
 
@@ -223,7 +225,7 @@ float nativeGetAudioData(int id, unsigned char** audioData, int& frameSize) {
 void nativeFreeAudioData(int id) {
     std::shared_ptr<VideoContext> videoCtx;
 	if (!getVideoContext(id, videoCtx)) { return; }
-	
+
 	videoCtx->avhandler->freeAudioFrame();
 }
 
@@ -248,7 +250,7 @@ void nativeSetSeekTime(int id, float sec) {
 bool nativeIsSeekOver(int id) {
     std::shared_ptr<VideoContext> videoCtx;
 	if (!getVideoContext(id, videoCtx)) { return false; }
-	
+
 	return !(videoCtx->avhandler->getDecoderState() == AVHandler::DecoderState::SEEK);
 }
 
@@ -262,7 +264,7 @@ bool nativeIsVideoBufferFull(int id) {
 bool nativeIsVideoBufferEmpty(int id) {
     std::shared_ptr<VideoContext> videoCtx;
 	if (!getVideoContext(id, videoCtx)) { return false; }
-	
+
 	return videoCtx->avhandler->isVideoBufferEmpty();
 }
 
