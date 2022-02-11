@@ -10,7 +10,9 @@
 #include <list>
 #include <cstring>
 
+#ifndef WIN32
 #define strcpy_s(src, size, dest) (strncpy((dest), (src), (size)))
+#endif
 
 typedef struct _VideoContext {
 	int id = -1;

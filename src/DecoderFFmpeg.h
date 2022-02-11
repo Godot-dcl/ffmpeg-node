@@ -21,7 +21,7 @@ public:
 	bool decode();
 	void seek(double time);
 	void destroy();
-	
+
 	VideoInfo getVideoInfo();
 	AudioInfo getAudioInfo();
 	void setVideoEnable(bool isEnable);
@@ -33,7 +33,7 @@ public:
 	void freeAudioFrame();
 
 	int getMetaData(char**& key, char**& value);
-	
+
 private:
 	bool mIsInitialized;
 	bool mIsAudioAllChEnabled;
@@ -61,7 +61,7 @@ private:
 	void updateBufferState();
 
 	int mFrameBufferNum;
-	
+
 	bool isBuffBlocked();
 	void updateVideoFrame();
 	void updateAudioFrame();
@@ -69,7 +69,7 @@ private:
 	void flushBuffer(std::queue<AVFrame*>* frameBuff, std::mutex* mutex);
 	std::mutex mVideoMutex;
 	std::mutex mAudioMutex;
-	
+
 	bool mIsSeekToAny;
 
 	int loadConfig();

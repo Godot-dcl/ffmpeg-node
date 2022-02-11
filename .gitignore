@@ -12,6 +12,7 @@ logs/*
 *.o
 *.os
 *.so
+!lib/**/*.so
 *.obj
 *.bc
 *.pyc
