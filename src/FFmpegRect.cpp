@@ -136,7 +136,7 @@ void FFmpegRect::_process(float delta) {
 
 	if (frame_ready) {
 		PackedByteArray image_data;
-		int size = width * height;
+		int size = width * height * 3;
 		image_data.resize(size);
 
 		const uint8_t *data = reinterpret_cast<const uint8_t*>(frame_data);
@@ -145,7 +145,7 @@ void FFmpegRect::_process(float delta) {
 		}
 
  		Ref<Image> image = Ref<Image>(memnew(Image()));
-		image->create_from_data(width, height, false, Image::FORMAT_L8, image_data);
+		image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
  		texture->create_from_image(image);
 
  		nativeReleaseVideoFrame(id);
