@@ -6,8 +6,8 @@
 
 using namespace godot;
 
-bool FFmpegRect::load(String file) {
-	CharString utf8 = file.utf8();
+bool FFmpegRect::load(String path) {
+	CharString utf8 = path.utf8();
 	const char *cstr = utf8.get_data();
 
 	nativeCreateDecoder(cstr, id);
@@ -25,12 +25,26 @@ bool FFmpegRect::load(String file) {
 	return is_loaded;
 }
 
+void FFmpegRect::load_async(String path) {
+	CharString utf8 = path.utf8();
+	const char *cstr = utf8.get_data();
+
+	nativeCreateDecoderAsync(cstr, id);
+
+	set_texture(texture);
+
+	async_loading = true;
+	processing = true;
+}
+
 void FFmpegRect::play() {
 	if (nativeGetDecoderState(id) == INITIALIZED) {
 		nativeStartDecoding(id);
 	} else if (paused) {
 		paused = false;
 	}
+
+	set_texture(texture);
 
 	processing = true;
 }
@@ -86,6 +100,23 @@ void FFmpegRect::seek(float p_time) {
 }
 
 void FFmpegRect::_process(float delta) {
+	if (async_loading) {
+		if (nativeGetDecoderState(id) == INITIALIZED) {
+			nativeGetVideoFormat(id, width, height, length);
+
+			async_loading = false;
+
+			emit_signal("async_loaded", true);
+		} else if (nativeGetDecoderState(id) == INIT_FAIL) {
+			processing = false;
+			async_loading = false;
+
+			emit_signal("async_loaded", false);
+		}
+
+		return;
+	}
+
 	if (!processing || paused) {
 		return;
 	}
@@ -104,26 +135,25 @@ void FFmpegRect::_process(float delta) {
 	nativeGrabVideoFrame(id, &frame_data, frame_ready);
 
 	if (frame_ready) {
-// 		Vector<uint8_t> image_data;
-// 		image_data.resize(3);
-// 		memcpy(frame_data, image_data.ptrw(), 3);
-//
-// 		Ref<Image> image = Ref<Image>(memnew(Image(width, height, false, Image::FORMAT_L8, image_data)));
-// 		texture->create_from_image(image);
+		PackedByteArray image_data;
+		int size = width * height;
+		image_data.resize(size);
+
+		const uint8_t *data = reinterpret_cast<const uint8_t*>(frame_data);
+		for(size_t i = 0; i < size; ++i) {
+			image_data[i] = data[i];
+		}
+
+ 		Ref<Image> image = Ref<Image>(memnew(Image()));
+		image->create_from_data(width, height, false, Image::FORMAT_L8, image_data);
+ 		texture->create_from_image(image);
 
  		nativeReleaseVideoFrame(id);
-	} else if (nativeIsEOF(id)) {
-		if (looping) {
-			seek(0);
-		} else {
-			processing = false;
-		}
 	}
 }
 
 FFmpegRect::FFmpegRect() {
 	texture = Ref<ImageTexture>(memnew(ImageTexture));
-	set_texture(texture);
 }
 
 FFmpegRect::~FFmpegRect() {
@@ -131,7 +161,8 @@ FFmpegRect::~FFmpegRect() {
 }
 
 void FFmpegRect::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("load", "file"), &FFmpegRect::load);
+	ClassDB::bind_method(D_METHOD("load", "path"), &FFmpegRect::load);
+	ClassDB::bind_method(D_METHOD("load_async", "path"), &FFmpegRect::load_async);
 	ClassDB::bind_method(D_METHOD("play"), &FFmpegRect::play);
 	ClassDB::bind_method(D_METHOD("stop"), &FFmpegRect::stop);
 	ClassDB::bind_method(D_METHOD("is_playing"), &FFmpegRect::is_playing);
@@ -141,4 +172,6 @@ void FFmpegRect::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("has_loop"), &FFmpegRect::has_loop);
 	ClassDB::bind_method(D_METHOD("seek", "time"), &FFmpegRect::seek);
 	ClassDB::bind_method(D_METHOD("is_paused"), &FFmpegRect::is_paused);
+
+	ADD_SIGNAL(MethodInfo("async_loaded", PropertyInfo(Variant::BOOL, "successful")));
 }

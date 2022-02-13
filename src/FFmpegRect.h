@@ -32,6 +32,7 @@ private:
 	bool processing = false;
 	bool seeking = false;
 	bool looping = false;
+	bool async_loading = false;
 
 	int width = 0;
 	int height = 0;
@@ -42,7 +43,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool load(String file);
+	bool load(String path);
+	void load_async(String path);
 
 	void stop();
 	void play();
