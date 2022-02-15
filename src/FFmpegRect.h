@@ -39,6 +39,7 @@ private:
 	int width = 0;
 	int height = 0;
 	float length = 0;
+	int data_size = 0;
 
 	float global_start_time = 0;
 	float hang_time = 0;

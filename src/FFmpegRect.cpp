@@ -21,6 +21,7 @@ bool FFmpegRect::load(String path) {
 	bool is_loaded = nativeGetDecoderState(id) == INITIALIZED;
 	if (is_loaded) {
 		nativeGetVideoFormat(id, width, height, length);
+		data_size = width * height * 3;
 
 // 		bool audio_enabled = nativeIsAudioEnabled(id);
 // 		if (audio_enabled) {
@@ -136,6 +137,7 @@ void FFmpegRect::_process(float delta) {
 	if (async_loading) {
 		if (nativeGetDecoderState(id) == INITIALIZED) {
 			nativeGetVideoFormat(id, width, height, length);
+			data_size = width * height * 3;
 
 			async_loading = false;
 
@@ -183,15 +185,8 @@ void FFmpegRect::_process(float delta) {
 
 	if (frame_ready) {
 		PackedByteArray image_data;
-		int size = width * height * 3;
-		image_data.resize(size);
-
-		//memcpy(frame_data, image_data.ptrw(), size);
-
-		const uint8_t *data = reinterpret_cast<const uint8_t*>(frame_data);
-		for(size_t i = 0; i < size; ++i) {
-			image_data[i] = data[i];
-		}
+		image_data.resize(data_size);
+		memcpy(image_data.ptrw(), frame_data, data_size);
 
 		image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
  		texture->create_from_image(image);
@@ -202,7 +197,7 @@ void FFmpegRect::_process(float delta) {
 	current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 
 	nativeSetVideoTime(id, current_time);
-	//UtilityFunctions::print(Variant(Time::get_singleton()->get_unix_time_from_system() - global_start_time).stringify());
+	UtilityFunctions::print(Variant(current_time).stringify());
 
 	if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
 		hang_time = Time::get_singleton()->get_unix_time_from_system();
