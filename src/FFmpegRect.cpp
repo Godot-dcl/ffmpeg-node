@@ -2,11 +2,17 @@
 
 #include <cstring>
 
+#include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
 
 bool FFmpegRect::load(String path) {
+	if (nativeGetDecoderState(id) > UNINITIALIZED) {
+		return false;
+	}
+
 	CharString utf8 = path.utf8();
 	const char *cstr = utf8.get_data();
 
@@ -26,6 +32,11 @@ bool FFmpegRect::load(String path) {
 }
 
 void FFmpegRect::load_async(String path) {
+	if (nativeGetDecoderState(id) > UNINITIALIZED) {
+		emit_signal("async_loaded", false);
+		return;
+	}
+
 	CharString utf8 = path.utf8();
 	const char *cstr = utf8.get_data();
 
@@ -46,6 +57,8 @@ void FFmpegRect::play() {
 
 	set_texture(texture);
 
+	global_start_time = Time::get_singleton()->get_unix_time_from_system();
+
 	processing = true;
 }
 
@@ -54,8 +67,15 @@ void FFmpegRect::stop() {
 		return;
 	}
 
+	nativeDestroyDecoder(id);
+
+	current_time = 0;
+
 	paused = false;
 	processing = false;
+	buffering = false;
+	seeking = false;
+	async_loading = false;
 }
 
 bool FFmpegRect::is_playing() const {
@@ -64,6 +84,13 @@ bool FFmpegRect::is_playing() const {
 
 void FFmpegRect::set_paused(bool p_paused) {
 	paused = p_paused;
+
+	if (paused) {
+		hang_time = Time::get_singleton()->get_unix_time_from_system();
+	} else {
+		float time = Time::get_singleton()->get_unix_time_from_system();
+		global_start_time = time - (time - hang_time);
+	}
 }
 
 bool FFmpegRect::is_paused() const {
@@ -82,6 +109,10 @@ bool FFmpegRect::has_loop() const {
 	return looping;
 }
 
+float FFmpegRect::get_playback_position() const {
+	return current_time;
+}
+
 void FFmpegRect::seek(float p_time) {
 	if (nativeGetDecoderState(id) != DECODING) {
 		return;
@@ -95,6 +126,8 @@ void FFmpegRect::seek(float p_time) {
 
 	nativeSetSeekTime(id, p_time);
 	nativeSetVideoTime(id, p_time);
+
+	hang_time = Time::get_singleton()->get_unix_time_from_system();
 
 	seeking = true;
 }
@@ -121,8 +154,22 @@ void FFmpegRect::_process(float delta) {
 		return;
 	}
 
+	if (buffering) {
+		if (nativeIsVideoBufferFull(id) || nativeIsEOF(id)) {
+			float time = Time::get_singleton()->get_unix_time_from_system();
+			global_start_time = time - (time - hang_time);
+
+			buffering = false;
+		}
+
+		return;
+	}
+
 	if (seeking) {
 		if (nativeIsSeekOver(id)) {
+			float time = Time::get_singleton()->get_unix_time_from_system();
+			global_start_time = time - (time - hang_time);
+
 			seeking = false;
 		}
 
@@ -139,21 +186,34 @@ void FFmpegRect::_process(float delta) {
 		int size = width * height * 3;
 		image_data.resize(size);
 
+		//memcpy(frame_data, image_data.ptrw(), size);
+
 		const uint8_t *data = reinterpret_cast<const uint8_t*>(frame_data);
 		for(size_t i = 0; i < size; ++i) {
 			image_data[i] = data[i];
 		}
 
- 		Ref<Image> image = Ref<Image>(memnew(Image()));
 		image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
  		texture->create_from_image(image);
 
  		nativeReleaseVideoFrame(id);
 	}
+
+	current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
+
+	nativeSetVideoTime(id, current_time);
+	//UtilityFunctions::print(Variant(Time::get_singleton()->get_unix_time_from_system() - global_start_time).stringify());
+
+	if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
+		hang_time = Time::get_singleton()->get_unix_time_from_system();
+
+		buffering = true;
+	}
 }
 
 FFmpegRect::FFmpegRect() {
 	texture = Ref<ImageTexture>(memnew(ImageTexture));
+	image = Ref<Image>(memnew(Image()));
 }
 
 FFmpegRect::~FFmpegRect() {
@@ -170,6 +230,7 @@ void FFmpegRect::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_length"), &FFmpegRect::get_length);
 	ClassDB::bind_method(D_METHOD("set_loop", "enable"), &FFmpegRect::set_loop);
 	ClassDB::bind_method(D_METHOD("has_loop"), &FFmpegRect::has_loop);
+	ClassDB::bind_method(D_METHOD("get_playback_position"), &FFmpegRect::get_playback_position);
 	ClassDB::bind_method(D_METHOD("seek", "time"), &FFmpegRect::seek);
 	ClassDB::bind_method(D_METHOD("is_paused"), &FFmpegRect::is_paused);
 

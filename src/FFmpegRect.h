@@ -25,6 +25,7 @@ private:
 	};
 
 	Ref<ImageTexture> texture;
+	Ref<Image> image;
 
 	int id = 0;
 
@@ -32,11 +33,16 @@ private:
 	bool processing = false;
 	bool seeking = false;
 	bool looping = false;
+	bool buffering = false;
 	bool async_loading = false;
 
 	int width = 0;
 	int height = 0;
 	float length = 0;
+
+	float global_start_time = 0;
+	float hang_time = 0;
+	float current_time = 0;
 
 protected:
 	void _notification(int p_what);
@@ -59,7 +65,7 @@ public:
 
 	float get_length() const;
 
-	//float get_playback_position() const;
+	float get_playback_position() const;
 	void seek(float p_time);
 
 	void _process(float delta);
