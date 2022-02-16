@@ -1,9 +1,3 @@
-# Godot auto generated files
-*.gen.*
-.import/
-.godot/
-godot-cpp/gen/
-
 # Misc
 logs/*
 *.log
@@ -12,7 +6,6 @@ logs/*
 *.o
 *.os
 *.so
-!lib/**/*.so
 *.obj
 *.bc
 *.pyc
@@ -20,6 +13,7 @@ logs/*
 *.pdb
 *.lib
 bin
+lib
 *.config
 *.creator
 *.creator.user
