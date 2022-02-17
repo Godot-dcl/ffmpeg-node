@@ -20,6 +20,8 @@ bool FFmpegRect::load(String path) {
 
 	bool is_loaded = nativeGetDecoderState(id) == INITIALIZED;
 	if (is_loaded) {
+		first_frame = true;
+
 		nativeGetVideoFormat(id, width, height, length);
 		data_size = width * height * 3;
 
@@ -42,8 +44,6 @@ void FFmpegRect::load_async(String path) {
 	const char *cstr = utf8.get_data();
 
 	nativeCreateDecoderAsync(cstr, id);
-
-	set_texture(texture);
 
 	async_loading = true;
 	processing = true;
@@ -87,10 +87,9 @@ void FFmpegRect::set_paused(bool p_paused) {
 	paused = p_paused;
 
 	if (paused) {
-		hang_time = Time::get_singleton()->get_unix_time_from_system();
+		hang_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 	} else {
-		float time = Time::get_singleton()->get_unix_time_from_system();
-		global_start_time = time - (time - hang_time);
+		global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
 	}
 }
 
@@ -128,7 +127,7 @@ void FFmpegRect::seek(float p_time) {
 	nativeSetSeekTime(id, p_time);
 	nativeSetVideoTime(id, p_time);
 
-	hang_time = Time::get_singleton()->get_unix_time_from_system();
+	hang_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 
 	seeking = true;
 }
@@ -139,6 +138,8 @@ void FFmpegRect::_process(float delta) {
 			nativeGetVideoFormat(id, width, height, length);
 			data_size = width * height * 3;
 
+			first_frame = true;
+			processing = false;
 			async_loading = false;
 
 			emit_signal("async_loaded", true);
@@ -168,9 +169,7 @@ void FFmpegRect::_process(float delta) {
 
 	if (buffering) {
 		if (nativeIsVideoBufferFull(id) || nativeIsEOF(id)) {
-			double time = Time::get_singleton()->get_unix_time_from_system();
-			global_start_time = time - (time - hang_time);
-
+			global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
 			buffering = false;
 		}
 
@@ -179,9 +178,7 @@ void FFmpegRect::_process(float delta) {
 
 	if (seeking) {
 		if (nativeIsSeekOver(id)) {
-			double time = Time::get_singleton()->get_unix_time_from_system();
-			global_start_time = time - (time - hang_time);
-
+			global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
 			seeking = false;
 		}
 
@@ -197,9 +194,14 @@ void FFmpegRect::_process(float delta) {
 		PackedByteArray image_data;
 		image_data.resize(data_size);
 		memcpy(image_data.ptrw(), frame_data, data_size);
+ 		image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
 
-		image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
- 		texture->create_from_image(image);
+		if (first_frame) {
+			texture->create_from_image(image);
+			first_frame = false;
+		} else {
+			texture->update(image);
+		}
 
  		nativeReleaseVideoFrame(id);
 	}
@@ -211,9 +213,7 @@ void FFmpegRect::_process(float delta) {
 	}
 
 	if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
-		UtilityFunctions::print("buffered");
-		hang_time = Time::get_singleton()->get_unix_time_from_system();
-
+		hang_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 		buffering = true;
 	}
 }

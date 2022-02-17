@@ -29,6 +29,7 @@ private:
 
 	int id = 0;
 
+	bool first_frame = true;
 	bool paused = false;
 	bool processing = false;
 	bool seeking = false;
