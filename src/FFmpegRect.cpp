@@ -197,13 +197,19 @@ void FFmpegRect::_process(float delta) {
 	current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 
 	nativeSetVideoTime(id, current_time);
-	UtilityFunctions::print(Variant(current_time).stringify());
 
 	if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
 		hang_time = Time::get_singleton()->get_unix_time_from_system();
 
 		buffering = true;
 	}
+
+	// TODO: Implement audio.
+	unsigned char *audio_data = nullptr;
+	int audio_size = 0;
+	double audio_time = nativeGetAudioData(id, &audio_data, audio_size);
+	if (audio_time != -1.0)
+		nativeFreeAudioData(id);
 }
 
 FFmpegRect::FFmpegRect() {

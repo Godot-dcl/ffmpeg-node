@@ -5,8 +5,11 @@ cd ../ffmpeg
 ARCH=$(uname -m)
 
 ./configure \
-	--prefix=./../lib/linux/${ARCH} \
-	--enable-pthreads \
+	--prefix=./../lib/windows/${ARCH} \
+	--enable-cross-compile \
+	--cross-prefix=${ARCH}-w64-mingw32- \
+	--target-os=mingw32 \
+	--enable-w32threads \
 	--enable-shared \
 	--disable-static \
 	--disable-zlib \
@@ -18,7 +21,7 @@ ARCH=$(uname -m)
 	--disable-ffplay \
 	--disable-ffprobe \
 	--disable-ffmpeg \
-	--disable-yasm \
+	--disable-x86asm \
 	--arch=${ARCH}
 
 make clean

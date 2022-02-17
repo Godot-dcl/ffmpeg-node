@@ -12,6 +12,8 @@ if arch == "x64":
 platform = ""
 if env["platform"] == "linux" or env["platform"] == "freebsd":
     platform = "linux"
+elif env["platform"] == "windows":
+    platform = "windows"
 
 env.Append(LIBPATH=["lib/" + platform + "/" + arch + "/lib"])
 env.Append(CPPPATH=["lib/" + platform + "/" + arch + "/include"])

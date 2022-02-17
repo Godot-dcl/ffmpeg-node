@@ -41,9 +41,9 @@ private:
 	float length = 0;
 	int data_size = 0;
 
-	float global_start_time = 0;
-	float hang_time = 0;
-	float current_time = 0;
+	double global_start_time = 0;
+	double hang_time = 0;
+	double current_time = 0;
 
 protected:
 	void _notification(int p_what);
