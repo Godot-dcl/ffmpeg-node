@@ -70,7 +70,7 @@ void FFmpegRect::stop() {
 
 	nativeDestroyDecoder(id);
 
-	current_time = 0;
+	current_time = 0.0f;
 
 	paused = false;
 	processing = false;
@@ -119,8 +119,8 @@ void FFmpegRect::seek(float p_time) {
 		return;
 	}
 
-	if (p_time < 0) {
-		p_time = 0;
+	if (p_time < 0.0f) {
+		p_time = 0.0f;
 	} else if (p_time > length) {
 		p_time = length;
 	}
@@ -156,9 +156,19 @@ void FFmpegRect::_process(float delta) {
 		return;
 	}
 
+	if (!seeking) {
+		// TODO: Implement audio.
+		unsigned char *audio_data = nullptr;
+		int audio_size = 0;
+		double audio_time = nativeGetAudioData(id, &audio_data, audio_size);
+		if (audio_time != -1.0f) {
+			nativeFreeAudioData(id);
+		}
+	}
+
 	if (buffering) {
 		if (nativeIsVideoBufferFull(id) || nativeIsEOF(id)) {
-			float time = Time::get_singleton()->get_unix_time_from_system();
+			double time = Time::get_singleton()->get_unix_time_from_system();
 			global_start_time = time - (time - hang_time);
 
 			buffering = false;
@@ -169,7 +179,7 @@ void FFmpegRect::_process(float delta) {
 
 	if (seeking) {
 		if (nativeIsSeekOver(id)) {
-			float time = Time::get_singleton()->get_unix_time_from_system();
+			double time = Time::get_singleton()->get_unix_time_from_system();
 			global_start_time = time - (time - hang_time);
 
 			seeking = false;
@@ -196,13 +206,7 @@ void FFmpegRect::_process(float delta) {
 
 	current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 
-	if (current_time < length || length == -1) {
-		if (false && nativeIsContentReady(id)) {
-			//
-		} else {
-			nativeSetVideoTime(id, current_time);
-		}
-	} else if (!nativeIsVideoBufferEmpty(id)) {
+	if (current_time < length || length == -1.0f || !nativeIsVideoBufferEmpty(id)) {
 		nativeSetVideoTime(id, current_time);
 	}
 
@@ -212,13 +216,6 @@ void FFmpegRect::_process(float delta) {
 
 		buffering = true;
 	}
-
-	// TODO: Implement audio.
-	unsigned char *audio_data = nullptr;
-	int audio_size = 0;
-	double audio_time = nativeGetAudioData(id, &audio_data, audio_size);
-	if (audio_time != -1)
-		nativeFreeAudioData(id);
 }
 
 FFmpegRect::FFmpegRect() {
