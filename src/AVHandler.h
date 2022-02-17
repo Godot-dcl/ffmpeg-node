@@ -19,6 +19,11 @@ public:
 	void init(const char* filePath);
 	void startDecoding();
 	void stopDecoding();
+
+    void stop();
+
+    bool isDecoderRunning() const;
+
 	void setSeekTime(float sec);
 	
 	double getVideoFrame(void** frameData);
@@ -42,4 +47,5 @@ private:
 	double mSeekTime;
 	
 	std::thread mDecodeThread;
+    bool mDecodeThreadRunning = false;
 };

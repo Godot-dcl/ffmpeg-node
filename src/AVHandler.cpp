@@ -32,6 +32,14 @@ void AVHandler::stopDecoding() {
 	mDecoderState = UNINITIALIZED;
 }
 
+void AVHandler::stop() {
+    mDecoderState = STOP;
+}
+
+bool AVHandler::isDecoderRunning() const {
+    return mDecodeThreadRunning;
+}
+
 double AVHandler::getVideoFrame(void** frameData) {
 	if (mIDecoder == nullptr || !mIDecoder->getVideoInfo().isEnabled || mDecoderState == SEEK) {
 		LOG("Video is not available. \n");
@@ -77,6 +85,7 @@ void AVHandler::startDecoding() {
 	}
 
 	mDecodeThread = std::thread([&]() {
+        mDecodeThreadRunning = true;
 		if (!(mIDecoder->getVideoInfo().isEnabled || mIDecoder->getAudioInfo().isEnabled)) {
 			LOG("No stream enabled. \n");
 			LOG("Decode thread would not start. \n");
@@ -99,6 +108,7 @@ void AVHandler::startDecoding() {
 				break;
 			}
 		}
+        mDecodeThreadRunning = false;
 	});
 }
 

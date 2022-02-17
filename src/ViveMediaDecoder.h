@@ -3,17 +3,19 @@
 #pragma once
 
 extern "C" {
-	// Utils
-	void nativeCleanAll();
+    // Utils
+    void nativeCleanAll();
+    void nativeCleanDestroyedDecoders();
 	//	Decoder
 	int nativeCreateDecoder(const char* filePath, int& id);
 	int nativeCreateDecoderAsync(const char* filePath, int& id);
 	int nativeGetDecoderState(int id);
 	bool nativeStartDecoding(int id);
+    void nativeScheduleDestroyDecoder(int id);
 	void nativeDestroyDecoder(int id);
 	bool nativeIsEOF(int id);
-	void nativeGrabVideoFrame(int id, void** frameData, bool& frameReady);
-	void nativeReleaseVideoFrame(int id);
+    void nativeGrabVideoFrame(int id, void** frameData, bool& frameReady);
+    void nativeReleaseVideoFrame(int id);
 	//	Video
 	bool nativeIsVideoEnabled(int id);
 	void nativeSetVideoEnable(int id, bool isEnable);

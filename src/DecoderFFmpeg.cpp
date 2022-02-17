@@ -265,6 +265,8 @@ double DecoderFFmpeg::getVideoFrame(void** frameData) {
 	double timeInSec = av_q2d(mVideoStream->time_base) * timeStamp;
 	mVideoInfo.lastTime = timeInSec;
 
+    printf("mVideoInfo.lastTime %f\n", timeInSec);
+
 	return timeInSec;
 }
 
@@ -410,9 +412,12 @@ void DecoderFFmpeg::updateVideoFrame() {
         AVFrame* dstFrame = av_frame_alloc();
         av_frame_copy_props(dstFrame, srcFrame);
 
+        dstFrame->format = dstFormat;
+
+        //av_image_alloc(dstFrame->data, dstFrame->linesize, dstFrame->width, dstFrame->height, dstFormat, 0)
         int numBytes = avpicture_get_size(dstFormat, width, height);
         AVBufferRef* buffer = av_buffer_alloc(numBytes*sizeof(uint8_t));
-        avpicture_fill((AVPicture *)dstFrame, buffer->data, dstFormat, width, height);
+        avpicture_fill((AVPicture *)dstFrame,buffer->data,dstFormat,width,height);
         dstFrame->buf[0] = buffer;
 
         SwsContext* conversion = sws_getContext(width,

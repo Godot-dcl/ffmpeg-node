@@ -196,9 +196,18 @@ void FFmpegRect::_process(float delta) {
 
 	current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 
-	nativeSetVideoTime(id, current_time);
+	if (current_time < length || length == -1) {
+		if (false && nativeIsContentReady(id)) {
+			//
+		} else {
+			nativeSetVideoTime(id, current_time);
+		}
+	} else if (!nativeIsVideoBufferEmpty(id)) {
+		nativeSetVideoTime(id, current_time);
+	}
 
 	if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
+		UtilityFunctions::print("buffered");
 		hang_time = Time::get_singleton()->get_unix_time_from_system();
 
 		buffering = true;
@@ -208,7 +217,7 @@ void FFmpegRect::_process(float delta) {
 	unsigned char *audio_data = nullptr;
 	int audio_size = 0;
 	double audio_time = nativeGetAudioData(id, &audio_data, audio_size);
-	if (audio_time != -1.0)
+	if (audio_time != -1)
 		nativeFreeAudioData(id);
 }
 
@@ -218,7 +227,7 @@ FFmpegRect::FFmpegRect() {
 }
 
 FFmpegRect::~FFmpegRect() {
-	nativeCleanAll();
+	nativeScheduleDestroyDecoder(id);
 }
 
 void FFmpegRect::_bind_methods() {
