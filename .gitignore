@@ -1,3 +1,6 @@
+# Godot
+.godot/
+
 # Misc
 logs/*
 *.log

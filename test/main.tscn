@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://b72l014npyxlr"]
+
+[ext_resource type="Script" path="res://main.gd" id="1_iyf6q"]
+
+[node name="Control" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource( "1_iyf6q" )
+
+[node name="FFmpegRect" type="FFmpegRect" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+ignore_texture_size = true
