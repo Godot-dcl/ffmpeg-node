@@ -9,7 +9,7 @@
 using namespace godot;
 
 bool FFmpegRect::load(String path) {
-	if (nativeGetDecoderState(id) > UNINITIALIZED) {
+	if (nativeGetDecoderState(id) > 1) {
 		return false;
 	}
 
@@ -18,7 +18,7 @@ bool FFmpegRect::load(String path) {
 
 	nativeCreateDecoder(cstr, id);
 
-	bool is_loaded = nativeGetDecoderState(id) == INITIALIZED;
+	bool is_loaded = nativeGetDecoderState(id) == 1;
 	if (is_loaded) {
 		first_frame = true;
 
@@ -29,13 +29,17 @@ bool FFmpegRect::load(String path) {
 // 		if (audio_enabled) {
 // 			nativeSetAudioAllChDataEnable(id, true);
 // 		}
+
+		state = INITIALIZED;
+	} else {
+		state = UNINITIALIZED;
 	}
 
 	return is_loaded;
 }
 
 void FFmpegRect::load_async(String path) {
-	if (nativeGetDecoderState(id) > UNINITIALIZED) {
+	if (nativeGetDecoderState(id) > 1) {
 		emit_signal("async_loaded", false);
 		return;
 	}
@@ -45,22 +49,25 @@ void FFmpegRect::load_async(String path) {
 
 	nativeCreateDecoderAsync(cstr, id);
 
-	async_loading = true;
-	processing = true;
+	state = LOADING;
 }
 
 void FFmpegRect::play() {
-	if (nativeGetDecoderState(id) == INITIALIZED) {
-		nativeStartDecoding(id);
-	} else if (paused) {
+	if (state != INITIALIZED) {
+		return;
+	}
+
+	if (paused) {
 		paused = false;
+	} else {
+		nativeStartDecoding(id);
 	}
 
 	set_texture(texture);
 
 	global_start_time = Time::get_singleton()->get_unix_time_from_system();
 
-	processing = true;
+	state = DECODING;
 }
 
 void FFmpegRect::stop() {
@@ -71,16 +78,13 @@ void FFmpegRect::stop() {
 	nativeDestroyDecoder(id);
 
 	current_time = 0.0f;
-
 	paused = false;
-	processing = false;
-	buffering = false;
-	seeking = false;
-	async_loading = false;
+
+	state = INITIALIZED;
 }
 
 bool FFmpegRect::is_playing() const {
-	return !paused && nativeGetDecoderState(id) == DECODING;
+	return !paused && state == DECODING;
 }
 
 void FFmpegRect::set_paused(bool p_paused) {
@@ -114,7 +118,7 @@ float FFmpegRect::get_playback_position() const {
 }
 
 void FFmpegRect::seek(float p_time) {
-	if (nativeGetDecoderState(id) != DECODING) {
+	if (state != DECODING && state != END_OF_FILE) {
 		return;
 	}
 
@@ -127,37 +131,13 @@ void FFmpegRect::seek(float p_time) {
 	nativeSetSeekTime(id, p_time);
 	nativeSetVideoTime(id, p_time);
 
-	hang_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
+	hang_time = p_time;
 
-	seeking = true;
+	state = SEEK;
 }
 
 void FFmpegRect::_process(float delta) {
-	if (async_loading) {
-		if (nativeGetDecoderState(id) == INITIALIZED) {
-			nativeGetVideoFormat(id, width, height, length);
-			data_size = width * height * 3;
-
-			first_frame = true;
-			processing = false;
-			async_loading = false;
-
-			emit_signal("async_loaded", true);
-		} else if (nativeGetDecoderState(id) == INIT_FAIL) {
-			processing = false;
-			async_loading = false;
-
-			emit_signal("async_loaded", false);
-		}
-
-		return;
-	}
-
-	if (!processing || paused) {
-		return;
-	}
-
-	if (!seeking) {
+	if (state != SEEK) {
 		// TODO: Implement audio.
 		unsigned char *audio_data = nullptr;
 		int audio_size = 0;
@@ -167,54 +147,87 @@ void FFmpegRect::_process(float delta) {
 		}
 	}
 
-	if (buffering) {
-		if (nativeIsVideoBufferFull(id) || nativeIsEOF(id)) {
-			global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
-			buffering = false;
-		}
+	switch (state) {
+		case LOADING: {
+			if (nativeGetDecoderState(id) == INITIALIZED) {
+				nativeGetVideoFormat(id, width, height, length);
+				data_size = width * height * 3;
 
-		return;
-	}
+				first_frame = true;
 
-	if (seeking) {
-		if (nativeIsSeekOver(id)) {
-			global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
-			seeking = false;
-		}
+				state = INITIALIZED;
 
-		return;
-	}
+				emit_signal("async_loaded", true);
+			} else if (nativeGetDecoderState(id) == -1) {
+				state = UNINITIALIZED;
+				emit_signal("async_loaded", false);
+			}
+		} break;
 
-	void* frame_data = nullptr;
-	bool frame_ready = false;
+		case BUFFERING: {
+			if (nativeIsVideoBufferFull(id) || nativeIsEOF(id)) {
+				global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
+				state = DECODING;
+			}
+		} break;
 
-	nativeGrabVideoFrame(id, &frame_data, frame_ready);
+		case SEEK: {
+			if (nativeIsSeekOver(id)) {
+				global_start_time = Time::get_singleton()->get_unix_time_from_system() - hang_time;
+				state = DECODING;
+			}
+		} break;
 
-	if (frame_ready) {
-		PackedByteArray image_data;
-		image_data.resize(data_size);
-		memcpy(image_data.ptrw(), frame_data, data_size);
- 		image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
+		case DECODING: {
+			if (paused) {
+				return;
+			}
 
-		if (first_frame) {
-			texture->create_from_image(image);
-			first_frame = false;
-		} else {
-			texture->update(image);
-		}
+			void* frame_data = nullptr;
+			bool frame_ready = false;
 
- 		nativeReleaseVideoFrame(id);
-	}
+			nativeGrabVideoFrame(id, &frame_data, frame_ready);
 
-	current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
+			if (frame_ready) {
+				PackedByteArray image_data;
+				image_data.resize(data_size);
+				memcpy(image_data.ptrw(), frame_data, data_size);
+				image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
 
-	if (current_time < length || length == -1.0f || !nativeIsVideoBufferEmpty(id)) {
-		nativeSetVideoTime(id, current_time);
-	}
+				if (first_frame) {
+					texture->create_from_image(image);
+					first_frame = false;
+				} else {
+					texture->update(image);
+				}
 
-	if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
-		hang_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
-		buffering = true;
+				nativeReleaseVideoFrame(id);
+			}
+
+			current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
+
+			if (current_time < length || length == -1.0f) {
+				nativeSetVideoTime(id, current_time);
+			} else {
+				if (!nativeIsVideoBufferEmpty(id)) {
+					nativeSetVideoTime(id, current_time);
+				} else {
+					state = END_OF_FILE;
+				}
+			}
+
+			if (nativeIsVideoBufferEmpty(id) && !nativeIsEOF(id)) {
+				hang_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
+				state = BUFFERING;
+			}
+		} break;
+
+		case END_OF_FILE: {
+			if (looping) {
+				state = DECODING;
+				seek(0.0f);
+			}
+		} break;
 	}
 }
 

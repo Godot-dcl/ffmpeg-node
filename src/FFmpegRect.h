@@ -13,29 +13,25 @@ class FFmpegRect : public TextureRect {
 	GDCLASS(FFmpegRect, TextureRect);
 
 private:
-	enum DecoderState {
-		INIT_FAIL = -1,
+	enum State {
+		LOADING,
 		UNINITIALIZED,
 		INITIALIZED,
 		DECODING,
 		SEEK,
 		BUFFERING,
-		DECODE_EOF,
-		STOP,
+		END_OF_FILE,
 	};
 
 	Ref<ImageTexture> texture;
 	Ref<Image> image;
 
 	int id = 0;
+	int state = UNINITIALIZED;
 
 	bool first_frame = true;
 	bool paused = false;
-	bool processing = false;
-	bool seeking = false;
 	bool looping = false;
-	bool buffering = false;
-	bool async_loading = false;
 
 	int width = 0;
 	int height = 0;
