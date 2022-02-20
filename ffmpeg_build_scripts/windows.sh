@@ -9,7 +9,6 @@ ARCH=$(uname -m)
 	--enable-cross-compile \
 	--cross-prefix=${ARCH}-w64-mingw32- \
 	--target-os=mingw32 \
-	--enable-w32threads \
 	--enable-shared \
 	--disable-static \
 	--disable-zlib \

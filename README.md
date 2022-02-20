@@ -7,5 +7,5 @@ cd ffmpeg
 ./linux.sh
 
 cd ..
-scons
+scons target=release
 ```
