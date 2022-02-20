@@ -4,7 +4,7 @@
 git submodule update --init --recursive
 
 cd ffmpeg
-./linux.sh
+./[Platform Name].sh
 
 cd ..
 scons target=release
