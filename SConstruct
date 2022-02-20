@@ -14,6 +14,7 @@ if env["platform"] == "linux" or env["platform"] == "freebsd":
     platform = "linux"
 elif env["platform"] == "windows":
     platform = "windows"
+    env["CXX"] = "x86_64-w64-mingw32-g++-posix"
 
 env.Append(LIBPATH=["lib/" + platform + "/" + arch + "/lib"])
 env.Append(CPPPATH=["lib/" + platform + "/" + arch + "/include"])

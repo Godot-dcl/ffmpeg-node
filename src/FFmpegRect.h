@@ -2,6 +2,8 @@
 
 #include "ViveMediaDecoder.h"
 
+//#include <godot_cpp/classes/audio_stream_playback.hpp>
+//#include <godot_cpp/classes/audio_stream_player.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
@@ -23,6 +25,10 @@ private:
 		END_OF_FILE,
 	};
 
+	// TODO: Implement audio.
+// 	AudioStreamPlayer *player;
+// 	Ref<AudioStreamPlayback> playback;
+
 	Ref<ImageTexture> texture;
 	Ref<Image> image;
 
@@ -33,14 +39,23 @@ private:
 	bool paused = false;
 	bool looping = false;
 
+	bool video_playback = false;
 	int width = 0;
 	int height = 0;
-	float length = 0;
+	float video_length = 0.0f;
+	double video_current_time = 0.0f;
 	int data_size = 0;
+
+	bool audio_playback = false;
+	int channels = 0;
+	int frequency = 0;
+	float audio_length = 0.0f;
+	double audio_current_time = 0.0f;
 
 	double global_start_time = 0.0f;
 	double hang_time = 0.0f;
-	double current_time = 0.0f;
+
+	void _init_media();
 
 protected:
 	void _notification(int p_what);
@@ -67,6 +82,7 @@ public:
 	void seek(float p_time);
 
 	void _process(float delta);
+// 	void _physics_process(float delta);
 
 	FFmpegRect();
 	~FFmpegRect();

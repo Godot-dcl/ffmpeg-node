@@ -2,11 +2,29 @@
 
 #include <cstring>
 
+//#include <godot_cpp/classes/audio_stream_generator.hpp>
 #include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
+//#include <godot_cpp/variant/utility_functions.hpp>
 
 using namespace godot;
+
+void FFmpegRect::_init_media() {
+	video_playback = nativeIsVideoEnabled(id);
+	if (video_playback) {
+		first_frame = true;
+
+		nativeGetVideoFormat(id, width, height, video_length);
+		data_size = width * height * 3;
+	}
+
+	audio_playback = nativeIsAudioEnabled(id);
+	if (audio_playback) {
+		nativeGetAudioFormat(id, channels, frequency, audio_length);
+	}
+
+	state = INITIALIZED;
+}
 
 bool FFmpegRect::load(String path) {
 	if (nativeGetDecoderState(id) > 1) {
@@ -20,17 +38,7 @@ bool FFmpegRect::load(String path) {
 
 	bool is_loaded = nativeGetDecoderState(id) == 1;
 	if (is_loaded) {
-		first_frame = true;
-
-		nativeGetVideoFormat(id, width, height, length);
-		data_size = width * height * 3;
-
-// 		bool audio_enabled = nativeIsAudioEnabled(id);
-// 		if (audio_enabled) {
-// 			nativeSetAudioAllChDataEnable(id, true);
-// 		}
-
-		state = INITIALIZED;
+		_init_media();
 	} else {
 		state = UNINITIALIZED;
 	}
@@ -77,7 +85,8 @@ void FFmpegRect::stop() {
 
 	nativeDestroyDecoder(id);
 
-	current_time = 0.0f;
+	video_current_time = 0.0f;
+	audio_current_time = 0.0f;
 	paused = false;
 
 	state = INITIALIZED;
@@ -102,7 +111,7 @@ bool FFmpegRect::is_paused() const {
 }
 
 float FFmpegRect::get_length() const {
-	return length;
+	return video_playback && video_length > audio_length ? video_length : audio_length;
 }
 
 void FFmpegRect::set_loop(bool p_enable) {
@@ -114,7 +123,7 @@ bool FFmpegRect::has_loop() const {
 }
 
 float FFmpegRect::get_playback_position() const {
-	return current_time;
+	return video_playback && video_current_time > audio_current_time ? video_current_time : audio_current_time;
 }
 
 void FFmpegRect::seek(float p_time) {
@@ -124,8 +133,8 @@ void FFmpegRect::seek(float p_time) {
 
 	if (p_time < 0.0f) {
 		p_time = 0.0f;
-	} else if (p_time > length) {
-		p_time = length;
+	} else if ((video_playback && p_time > video_length) || (audio_playback && p_time > audio_length)) {
+		p_time = video_length;
 	}
 
 	nativeSetSeekTime(id, p_time);
@@ -137,7 +146,7 @@ void FFmpegRect::seek(float p_time) {
 }
 
 void FFmpegRect::_process(float delta) {
-	if (state != SEEK) {
+	if (state > INITIALIZED && state != SEEK && state != END_OF_FILE) {
 		// TODO: Implement audio.
 		unsigned char *audio_data = nullptr;
 		int audio_size = 0;
@@ -150,13 +159,7 @@ void FFmpegRect::_process(float delta) {
 	switch (state) {
 		case LOADING: {
 			if (nativeGetDecoderState(id) == INITIALIZED) {
-				nativeGetVideoFormat(id, width, height, length);
-				data_size = width * height * 3;
-
-				first_frame = true;
-
-				state = INITIALIZED;
-
+				_init_media();
 				emit_signal("async_loaded", true);
 			} else if (nativeGetDecoderState(id) == -1) {
 				state = UNINITIALIZED;
@@ -183,36 +186,38 @@ void FFmpegRect::_process(float delta) {
 				return;
 			}
 
-			void* frame_data = nullptr;
-			bool frame_ready = false;
+			if (video_playback) {
+				void *frame_data = nullptr;
+				bool frame_ready = false;
 
-			nativeGrabVideoFrame(id, &frame_data, frame_ready);
+				nativeGrabVideoFrame(id, &frame_data, frame_ready);
 
-			if (frame_ready) {
-				PackedByteArray image_data;
-				image_data.resize(data_size);
-				memcpy(image_data.ptrw(), frame_data, data_size);
-				image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
+				if (frame_ready) {
+					PackedByteArray image_data;
+					image_data.resize(data_size);
+					memcpy(image_data.ptrw(), frame_data, data_size);
+					image->create_from_data(width, height, false, Image::FORMAT_RGB8, image_data);
 
-				if (first_frame) {
-					texture->create_from_image(image);
-					first_frame = false;
-				} else {
-					texture->update(image);
+					if (first_frame) {
+						texture->create_from_image(image);
+						first_frame = false;
+					} else {
+						texture->update(image);
+					}
+
+					nativeReleaseVideoFrame(id);
 				}
 
-				nativeReleaseVideoFrame(id);
-			}
+				video_current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
 
-			current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
-
-			if (current_time < length || length == -1.0f) {
-				nativeSetVideoTime(id, current_time);
-			} else {
-				if (!nativeIsVideoBufferEmpty(id)) {
-					nativeSetVideoTime(id, current_time);
+				if (video_current_time < video_length || video_length == -1.0f) {
+					nativeSetVideoTime(id, video_current_time);
 				} else {
-					state = END_OF_FILE;
+					if (!nativeIsVideoBufferEmpty(id)) {
+						nativeSetVideoTime(id, video_current_time);
+					} else {
+						state = END_OF_FILE;
+					}
 				}
 			}
 
@@ -231,9 +236,39 @@ void FFmpegRect::_process(float delta) {
 	}
 }
 
+// TODO: Implement audio.
+
+// void FFmpegRect::_physics_process(float delta) {
+// 	if (!audio_playback || paused || state == UNINITIALIZED || state == EOF) {
+// 		return;
+// 	}
+//
+// 	unsigned char *frame_data = nullptr;
+// 	int frame_length = 0;
+// 	double audio_time = nativeGetAudioData(id, &frame_data, frame_length);
+//
+// 	if (audio_time > 0.0f) {
+// 		if (state != SEEK && frame_length != 0 && frame_data != nullptr) { }
+//
+// 		nativeFreeAudioData(id);
+// 	}
+//
+// 	if (state == DECODING && frame_data != nullptr && !player->is_playing()) {
+// 		audio_current_time = Time::get_singleton()->get_unix_time_from_system() - global_start_time;
+// 	}
+// }
+
 FFmpegRect::FFmpegRect() {
 	texture = Ref<ImageTexture>(memnew(ImageTexture));
 	image = Ref<Image>(memnew(Image()));
+
+	// TODO: Implement audio.
+
+// 	player = memnew(AudioStreamPlayer);
+// 	add_child(player);
+// 	Ref<AudioStreamGenerator> generator = Ref<AudioStreamGenerator>(memnew(AudioStreamGenerator));
+// 	player->set_stream(generator);
+// 	playback = player->get_stream_playback();
 }
 
 FFmpegRect::~FFmpegRect() {
