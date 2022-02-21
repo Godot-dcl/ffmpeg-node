@@ -3,7 +3,7 @@
 ```
 git submodule update --init --recursive
 
-cd ffmpeg
+cd ffmpeg_build_scripts
 ./[Platform Name].sh
 
 cd ..

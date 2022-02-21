@@ -10,4 +10,3 @@ script = ExtResource( "1_iyf6q" )
 [node name="FFmpegRect" type="FFmpegRect" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
-ignore_texture_size = true

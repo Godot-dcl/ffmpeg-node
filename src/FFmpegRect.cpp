@@ -259,6 +259,8 @@ void FFmpegRect::_process(float delta) {
 // }
 
 FFmpegRect::FFmpegRect() {
+	set_ignore_texture_size(true);
+
 	texture = Ref<ImageTexture>(memnew(ImageTexture));
 	image = Ref<Image>(memnew(Image()));
 

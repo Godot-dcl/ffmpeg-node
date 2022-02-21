@@ -6,8 +6,8 @@ import platform
 
 env = SConscript("godot-cpp/SConstruct")
 
-arch = env["arch"] if "arch" in env and env["arch"] else platform.machine()
-if arch == "x64":
+arch = "x86"
+if env["arch_suffix"] == "64":
     arch = "x86_64"
 
 if env["platform"] == "freebsd":
@@ -29,7 +29,7 @@ suffix = env["SHLIBSUFFIX"]
 if env["platform"] == "windows":
     suffix = ".dll"
 
-library = env.SharedLibrary("bin/" + env["platform"] + "/libffmpegmediadecoder." + arch + suffix, source=sources)
+library = env.SharedLibrary("bin/" + env["platform"] + "/libffmpegmediadecoder." + env["arch_suffix"] + suffix, source=sources)
 
 env.Prepend(LIBS=["avformat", "avcodec", "avutil", "swresample", "swscale"])
 
