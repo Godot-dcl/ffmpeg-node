@@ -6,13 +6,12 @@
 //#include <godot_cpp/classes/audio_stream_player.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
-#include <godot_cpp/classes/texture_rect.hpp>
-#include <godot_cpp/core/binder_common.hpp>
+#include <godot_cpp/classes/node.hpp>
 
 using namespace godot;
 
-class FFmpegRect : public TextureRect {
-	GDCLASS(FFmpegRect, TextureRect);
+class FFmpegNode : public Node {
+	GDCLASS(FFmpegNode, Node);
 
 private:
 	enum State {
@@ -62,8 +61,8 @@ protected:
 	static void _bind_methods();
 
 public:
-	bool load(String path);
-	void load_async(String path);
+	bool load_path(String path);
+	void load_path_async(String path);
 
 	void stop();
 	void play();
@@ -76,6 +75,8 @@ public:
 	void set_loop(bool p_enable);
 	bool has_loop() const;
 
+	Ref<ImageTexture> get_texture();
+
 	float get_length() const;
 
 	float get_playback_position() const;
@@ -84,6 +85,6 @@ public:
 	void _process(float delta);
 // 	void _physics_process(float delta);
 
-	FFmpegRect();
-	~FFmpegRect();
+	FFmpegNode();
+	~FFmpegNode();
 };

@@ -1,9 +1,8 @@
 #include "RegisterTypes.h"
 
-#include "FFmpegRect.h"
+#include "FFmpegNode.h"
 
 #include <godot/gdnative_interface.h>
-
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
@@ -11,7 +10,7 @@
 using namespace godot;
 
 void register_scenes_types() {
-	ClassDB::register_class<FFmpegRect>();
+	ClassDB::register_class<FFmpegNode>();
 }
 
 extern "C" {

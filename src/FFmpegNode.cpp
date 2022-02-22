@@ -1,4 +1,4 @@
-#include "FFmpegRect.h"
+#include "FFmpegNode.h"
 
 #include <cstring>
 
@@ -9,7 +9,7 @@
 
 using namespace godot;
 
-void FFmpegRect::_init_media() {
+void FFmpegNode::_init_media() {
 	video_playback = nativeIsVideoEnabled(id);
 	if (video_playback) {
 		first_frame = true;
@@ -26,7 +26,7 @@ void FFmpegRect::_init_media() {
 	state = INITIALIZED;
 }
 
-bool FFmpegRect::load(String path) {
+bool FFmpegNode::load_path(String path) {
 	if (nativeGetDecoderState(id) > 1) {
 		return false;
 	}
@@ -46,7 +46,7 @@ bool FFmpegRect::load(String path) {
 	return is_loaded;
 }
 
-void FFmpegRect::load_async(String path) {
+void FFmpegNode::load_path_async(String path) {
 	if (nativeGetDecoderState(id) > 1) {
 		emit_signal("async_loaded", false);
 		return;
@@ -60,7 +60,7 @@ void FFmpegRect::load_async(String path) {
 	state = LOADING;
 }
 
-void FFmpegRect::play() {
+void FFmpegNode::play() {
 	if (state != INITIALIZED) {
 		return;
 	}
@@ -71,14 +71,12 @@ void FFmpegRect::play() {
 		nativeStartDecoding(id);
 	}
 
-	set_texture(texture);
-
 	global_start_time = Time::get_singleton()->get_unix_time_from_system();
 
 	state = DECODING;
 }
 
-void FFmpegRect::stop() {
+void FFmpegNode::stop() {
 	if (nativeGetDecoderState(id) != DECODING) {
 		return;
 	}
@@ -92,11 +90,11 @@ void FFmpegRect::stop() {
 	state = INITIALIZED;
 }
 
-bool FFmpegRect::is_playing() const {
+bool FFmpegNode::is_playing() const {
 	return !paused && state == DECODING;
 }
 
-void FFmpegRect::set_paused(bool p_paused) {
+void FFmpegNode::set_paused(bool p_paused) {
 	paused = p_paused;
 
 	if (paused) {
@@ -106,27 +104,31 @@ void FFmpegRect::set_paused(bool p_paused) {
 	}
 }
 
-bool FFmpegRect::is_paused() const {
+bool FFmpegNode::is_paused() const {
 	return paused;
 }
 
-float FFmpegRect::get_length() const {
+Ref<ImageTexture> FFmpegNode::get_texture() {
+	return texture;
+}
+
+float FFmpegNode::get_length() const {
 	return video_playback && video_length > audio_length ? video_length : audio_length;
 }
 
-void FFmpegRect::set_loop(bool p_enable) {
+void FFmpegNode::set_loop(bool p_enable) {
 	looping = p_enable;
 }
 
-bool FFmpegRect::has_loop() const {
+bool FFmpegNode::has_loop() const {
 	return looping;
 }
 
-float FFmpegRect::get_playback_position() const {
+float FFmpegNode::get_playback_position() const {
 	return video_playback && video_current_time > audio_current_time ? video_current_time : audio_current_time;
 }
 
-void FFmpegRect::seek(float p_time) {
+void FFmpegNode::seek(float p_time) {
 	if (state != DECODING && state != END_OF_FILE) {
 		return;
 	}
@@ -145,7 +147,7 @@ void FFmpegRect::seek(float p_time) {
 	state = SEEK;
 }
 
-void FFmpegRect::_process(float delta) {
+void FFmpegNode::_process(float delta) {
 	if (state > INITIALIZED && state != SEEK && state != END_OF_FILE) {
 		// TODO: Implement audio.
 		unsigned char *audio_data = nullptr;
@@ -238,7 +240,7 @@ void FFmpegRect::_process(float delta) {
 
 // TODO: Implement audio.
 
-// void FFmpegRect::_physics_process(float delta) {
+// void FFmpegNode::_physics_process(float delta) {
 // 	if (!audio_playback || paused || state == UNINITIALIZED || state == EOF) {
 // 		return;
 // 	}
@@ -258,9 +260,7 @@ void FFmpegRect::_process(float delta) {
 // 	}
 // }
 
-FFmpegRect::FFmpegRect() {
-	set_ignore_texture_size(true);
-
+FFmpegNode::FFmpegNode() {
 	texture = Ref<ImageTexture>(memnew(ImageTexture));
 	image = Ref<Image>(memnew(Image()));
 
@@ -273,23 +273,24 @@ FFmpegRect::FFmpegRect() {
 // 	playback = player->get_stream_playback();
 }
 
-FFmpegRect::~FFmpegRect() {
+FFmpegNode::~FFmpegNode() {
 	nativeScheduleDestroyDecoder(id);
 }
 
-void FFmpegRect::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("load", "path"), &FFmpegRect::load);
-	ClassDB::bind_method(D_METHOD("load_async", "path"), &FFmpegRect::load_async);
-	ClassDB::bind_method(D_METHOD("play"), &FFmpegRect::play);
-	ClassDB::bind_method(D_METHOD("stop"), &FFmpegRect::stop);
-	ClassDB::bind_method(D_METHOD("is_playing"), &FFmpegRect::is_playing);
-	ClassDB::bind_method(D_METHOD("set_paused", "paused"), &FFmpegRect::set_paused);
-	ClassDB::bind_method(D_METHOD("get_length"), &FFmpegRect::get_length);
-	ClassDB::bind_method(D_METHOD("set_loop", "enable"), &FFmpegRect::set_loop);
-	ClassDB::bind_method(D_METHOD("has_loop"), &FFmpegRect::has_loop);
-	ClassDB::bind_method(D_METHOD("get_playback_position"), &FFmpegRect::get_playback_position);
-	ClassDB::bind_method(D_METHOD("seek", "time"), &FFmpegRect::seek);
-	ClassDB::bind_method(D_METHOD("is_paused"), &FFmpegRect::is_paused);
+void FFmpegNode::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("load_path", "path"), &FFmpegNode::load_path);
+	ClassDB::bind_method(D_METHOD("load_path_async", "path"), &FFmpegNode::load_path_async);
+	ClassDB::bind_method(D_METHOD("play"), &FFmpegNode::play);
+	ClassDB::bind_method(D_METHOD("stop"), &FFmpegNode::stop);
+	ClassDB::bind_method(D_METHOD("is_playing"), &FFmpegNode::is_playing);
+	ClassDB::bind_method(D_METHOD("set_paused", "paused"), &FFmpegNode::set_paused);
+	ClassDB::bind_method(D_METHOD("is_paused"), &FFmpegNode::is_paused);
+	ClassDB::bind_method(D_METHOD("get_texture"), &FFmpegNode::get_texture);
+	ClassDB::bind_method(D_METHOD("get_length"), &FFmpegNode::get_length);
+	ClassDB::bind_method(D_METHOD("set_loop", "enable"), &FFmpegNode::set_loop);
+	ClassDB::bind_method(D_METHOD("has_loop"), &FFmpegNode::has_loop);
+	ClassDB::bind_method(D_METHOD("get_playback_position"), &FFmpegNode::get_playback_position);
+	ClassDB::bind_method(D_METHOD("seek", "time"), &FFmpegNode::seek);
 
 	ADD_SIGNAL(MethodInfo("async_loaded", PropertyInfo(Variant::BOOL, "successful")));
 }

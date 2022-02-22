@@ -1,15 +1,17 @@
-extends Control
+extends TextureRect
 
 
 const FILE_PATH =\
 		"http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
 const TIME_SKIP = 5
 
-@onready var ffmpeg = $FFmpegRect
+@onready var ffmpeg = $FFmpegNode
 
 
 func _ready():
-	ffmpeg.load(FILE_PATH)
+	texture = ffmpeg.get_texture()
+
+	ffmpeg.load_path(FILE_PATH)
 	ffmpeg.play()
 	ffmpeg.set_loop(true)
 
