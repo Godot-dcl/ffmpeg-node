@@ -9,3 +9,9 @@ cd ffmpeg_build_scripts
 cd ..
 scons target=release
 ```
+# Windows
+
+Precompiled ffmpeg libraries (version 4.4.1) can be found here:
+
+https://www.gyan.dev/ffmpeg/builds/#libraries
+
