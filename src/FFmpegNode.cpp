@@ -108,7 +108,7 @@ bool FFmpegNode::is_paused() const {
 	return paused;
 }
 
-Ref<ImageTexture> FFmpegNode::get_texture() {
+Ref<ImageTexture> FFmpegNode::get_video_texture() {
 	return texture;
 }
 
@@ -285,7 +285,7 @@ void FFmpegNode::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("is_playing"), &FFmpegNode::is_playing);
 	ClassDB::bind_method(D_METHOD("set_paused", "paused"), &FFmpegNode::set_paused);
 	ClassDB::bind_method(D_METHOD("is_paused"), &FFmpegNode::is_paused);
-	ClassDB::bind_method(D_METHOD("get_texture"), &FFmpegNode::get_texture);
+	ClassDB::bind_method(D_METHOD("get_video_texture"), &FFmpegNode::get_video_texture);
 	ClassDB::bind_method(D_METHOD("get_length"), &FFmpegNode::get_length);
 	ClassDB::bind_method(D_METHOD("set_loop", "enable"), &FFmpegNode::set_loop);
 	ClassDB::bind_method(D_METHOD("has_loop"), &FFmpegNode::has_loop);

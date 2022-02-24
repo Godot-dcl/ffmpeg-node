@@ -75,7 +75,7 @@ public:
 	void set_loop(bool p_enable);
 	bool has_loop() const;
 
-	Ref<ImageTexture> get_texture();
+	Ref<ImageTexture> get_video_texture();
 
 	float get_length() const;
 
