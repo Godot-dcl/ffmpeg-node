@@ -4,13 +4,19 @@ import os
 import sys
 import platform
 
-custom_opts = [
-    ("ffmpeg_path", "Path to precompiled ffmpeg library", "ffmpeg"),
-]
-
-Export("custom_opts")
-
 env = SConscript("godot-cpp/SConstruct")
+
+if env['platform'] == "windows" and not env["use_mingw"]:
+    env.msvc = True
+else:
+    env.msvc = False
+
+
+opts = Variables([])
+opts.Add("ffmpeg_path", "Path to precompiled ffmpeg library", "ffmpeg")
+
+opts.Update(env)
+
 
 arch = "x86"
 if env["arch_suffix"] == "64":
